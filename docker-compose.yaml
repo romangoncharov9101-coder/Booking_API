@@ -1,0 +1,102 @@
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: .
+      target: development
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+        - booking_net
+    restart: unless-stopped
+  
+  worker:
+    build:
+      context: .
+      target: development
+    command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=4
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - booking_net
+    restart: unless-stopped
+
+  beat:
+    build:
+      context: .
+      target: development
+    command: celery -A app.task.celery_app beat --loglevel=info --scheduler celery.beat.PersistentScheduler
+    volumes:
+      - .:/app
+      - celery_beat_data:/var/run/celery
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - booking_net
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    env_file:
+      - .env
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U booking -d booking"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - booking_net
+  
+  redis:
+    image: redis:7-alpine
+    ports: 
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - booking_net
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - booking_net
+
+volumes:
+  postgres_data:
+  redis_data:
+  celery_beat_data:
+
+networks:
+  booking_net:
+    driver: bridge
