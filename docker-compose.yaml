@@ -41,7 +41,7 @@ services:
     build:
       context: .
       target: development
-    command: celery -A app.task.celery_app beat --loglevel=info --scheduler celery.beat.PersistentScheduler
+    command: celery -A app.tasks.celery_app beat --loglevel=info --scheduler celery.beat.PersistentScheduler
     volumes:
       - .:/app
       - celery_beat_data:/var/run/celery

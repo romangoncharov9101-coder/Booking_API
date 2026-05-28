@@ -33,7 +33,7 @@ class User(BaseModel):
     is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     refresh_tokens: Mapped[list['RefreshToken']] = relationship(back_populates='user', cascade='all, delete-orphan', lazy='noload')
-    venus: Mapped[list['Venue']] = relationship(back_populates='owner', lazy='noload')
+    venues: Mapped[list['Venue']] = relationship(back_populates='owner', lazy='noload')
     bookings: Mapped[list['Booking']] = relationship(back_populates='user', lazy='noload')
     waitlist_entries: Mapped[list['WaitlistEntry']] = relationship(back_populates='user', lazy='noload')
     notifications: Mapped[list['NotificationEvent']] = relationship(back_populates='user', lazy='noload')

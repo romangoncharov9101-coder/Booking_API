@@ -48,8 +48,8 @@ class WaitlistEntry(BaseModel):
     notifications: Mapped[list['NotificationEvent']] = relationship(back_populates='waitlist_entries', lazy='noload')
 
     __table_args__ = (
-        Index('idx_waitlist_venue_id', 'venue_id')
-        Index('idx_waitlist_user_id', 'user_id')
-        Index('idx_waitlist_status', 'status')
-        Index('idx_waitlist_period', 'preferred_date_from', 'preferred_date_to')
+        Index('idx_waitlist_venue_id', 'venue_id'),
+        Index('idx_waitlist_user_id', 'user_id'),
+        Index('idx_waitlist_status', 'status'),
+        Index('idx_waitlist_period', 'preferred_date_from', 'preferred_date_to'),
     )
