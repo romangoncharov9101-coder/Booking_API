@@ -44,7 +44,7 @@ def create_refresh_token(user_id: UUID, jti: str) -> str:
         timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
     )
 
-def decode_access_token(token: str) -> dict[str, Any]:
+def decode_token(token: str, type: str) -> dict[str, Any]:
     try:
         payload: dict[str, Any] = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
     except ExpiredSignatureError:
@@ -52,7 +52,15 @@ def decode_access_token(token: str) -> dict[str, Any]:
     except JWTError:
         raise TokenInvalidError()
     
-    if payload.get('type') != 'refresh':
+    if payload.get('type') != type:
         raise TokenInvalidError
     return payload
 
+def generate_jti() -> str:
+    return secrets.token_urlsafe(32)
+
+def hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+def refresh_token_expires_at() -> datetime:
+    return datetime.now(UTC) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
