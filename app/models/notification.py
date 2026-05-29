@@ -7,8 +7,11 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import BaseModel
-from app.models.user import User
-from app.models.waitlist import WaitlistEntry
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.user import User
+    from app.models.waitlist import WaitlistEntry
 
 class NotificationType(str, enum.Enum):
     SLOT_AVAILABLE = 'slot_available'
@@ -32,14 +35,14 @@ class NotificationEvent(BaseModel):
     __tablename__ = 'notification_events'
 
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
-    venue_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('venues.id', ondelete='SET NULL'))
-    waitlist_entry_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('waitlist_entries.id', ondelete='SET NULL'))
+    venue_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('venues.id', ondelete='SET NULL'), nullable=True)
+    waitlist_entry_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('waitlist_entries.id', ondelete='SET NULL'), nullable=True)
     type: Mapped[NotificationType] = mapped_column(Enum(NotificationType, name='notification_type'), nullable=False)
     channel: Mapped[NotificationChannel] = mapped_column(Enum(NotificationChannel, name='notification_channel'), nullable=False, default=NotificationChannel.EMAIL)
     recipient_email: Mapped[str] = mapped_column(String(255), nullable=False)
     subject: Mapped[str] = mapped_column(String(255), nullable=False)
     payload: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
-    status: Mapped[NotificationStatus] = mapped_column(Enum(NotificationStatus, 'notification_status'), nullable=False, default=NotificationStatus.PENDING, index=True)
+    status: Mapped[NotificationStatus] = mapped_column(Enum(NotificationStatus, name='notification_status'), nullable=False, default=NotificationStatus.PENDING, index=True)
     error_message: Mapped[str | None] = mapped_column(Text)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
@@ -59,7 +62,7 @@ class AuditLog(BaseModel):
     action: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     entity_type: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     entity_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), index=True)
-    metadata: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    meta: Mapped[dict] = mapped_column('metadata', JSONB, nullable=False, default=dict)
 
     __table_args__ = (
         Index('idx_audit_log_actor_id', 'actor_id'),

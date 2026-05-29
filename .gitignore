@@ -17,3 +17,5 @@ htmlcov/
 *.log
 celerybeat-schedule
 celerybeat.pid
+
+booking-api-stage1-2/

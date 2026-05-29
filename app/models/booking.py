@@ -13,9 +13,12 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.schema import DDL
 
 from app.db.base import BaseModel
-from app.models.user import User
-from app.models.venue import Venue, Service, Resource
-from app.models.review import Review
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.user import User
+    from app.models.venue import Venue, Service, Resource
+    from app.models.review import Review
 
 class BookingStatus(str, enum.Enum):
     PENDING = 'pending'
@@ -35,13 +38,13 @@ class Booking(BaseModel):
     ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     status: Mapped[BookingStatus] = mapped_column(Enum(BookingStatus, name='booking_status'), nullable=False, default=BookingStatus.CONFIRMED, index=True)
     cancellation_reason: Mapped[str | None] = mapped_column(Text)
-    resource_group_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), index=True)
+    recurrence_group_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), index=True)
 
     user: Mapped['User'] = relationship(back_populates='bookings', lazy='noload')
     venue: Mapped['Venue'] = relationship(back_populates='bookings', lazy='noload')
     service: Mapped['Service'] = relationship(back_populates='bookings', lazy='noload')
     resource: Mapped['Resource'] = relationship(back_populates='bookings', lazy='noload')
-    review: Mapped['Review | None'] = relationship(back_populates='bookings', lazy='noload', uselist=False)
+    review: Mapped['Review | None'] = relationship(back_populates='booking', lazy='noload', uselist=False)
 
     __table_args__ = (
         Index('idx_bookings_user_id', 'user_id'),
@@ -49,7 +52,7 @@ class Booking(BaseModel):
         Index('idx_bookings_resource_id', 'resource_id'),
         Index('idx_bookings_starts_at', 'starts_at'),
         Index('idx_bookings_status', 'status'),
-        Index('idx_bookings__recurrence_group', 'recurrence_group_id'),
+        Index('idx_bookings_recurrence_group', 'recurrence_group_id'),
     )
 
 BOOKING_EXCLUSION_CONSTRAINT_DDL = DDL(
@@ -65,5 +68,5 @@ BOOKING_EXCLUSION_CONSTRAINT_DDL = DDL(
 )
 
 DROP_BOOKING_EXCLUSION_CONSTRAINT_DDL = DDL(
-    "ALTER TABLE bookings DROP CONSTRAINT IF EXISTS bookings_no_overlap"
+    "ALTER TABLE bookings DROP CONSTRAINT IF EXISTS booking_no_overlap"
 )

@@ -14,9 +14,12 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import BaseModel
-from app.models.user import User
-from app.models.venue import Venue
-from app.models.booking import Booking
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.user import User
+    from app.models.venue import Venue
+    from app.models.booking import Booking
 
 class Review(BaseModel):
     __tablename__ = 'reviews'
@@ -30,7 +33,7 @@ class Review(BaseModel):
 
     user: Mapped['User'] = relationship(back_populates='reviews', lazy='noload')
     venue: Mapped['Venue'] = relationship(back_populates='reviews', lazy='noload')
-    booking: Mapped['Booking'] = relationship(back_populates='reviews', lazy='noload')
+    booking: Mapped['Booking'] = relationship(back_populates='review', lazy='noload')
 
     __table_args__ = (
         CheckConstraint('rating BETWEEN 1 AND 5', name='ck_reviews_rating'),

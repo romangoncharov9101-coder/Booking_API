@@ -2,18 +2,20 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, Index, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, Index, String, Text, ForeignKey
 from sqlalchemy.dialects.postgresql import INET, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import UTC
 
 from app.db.base import BaseModel
+from typing import TYPE_CHECKING
 
-from app.models.venue import Venue
-from app.models.booking import Booking
-from app.models.waitlist import WaitlistEntry
-from app.models.notification import NotificationEvent
-from app.models.review import Review
+if TYPE_CHECKING:
+    from app.models.venue import Venue
+    from app.models.booking import Booking
+    from app.models.waitlist import WaitlistEntry
+    from app.models.notification import NotificationEvent
+    from app.models.review import Review
 
 class UserRole(str, enum.Enum):
     USER = 'user'
@@ -51,14 +53,10 @@ class User(BaseModel):
 class RefreshToken(BaseModel):
     __tablename__ = 'refresh_tokens'
 
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        nullable=False,
-        index=True,
-    )
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
     token_hash: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    revoked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     user_agent: Mapped[str | None] = mapped_column(Text)
     ip_address: Mapped[str | None] = mapped_column(INET)
 

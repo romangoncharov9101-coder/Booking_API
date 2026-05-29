@@ -1,6 +1,7 @@
 import enum
 import uuid
 from datetime import time
+from decimal import Decimal
 
 from sqlalchemy import (
     Boolean,
@@ -21,10 +22,13 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import BaseModel
-from app.models.user import User
-from app.models.booking import Booking
-from app.models.waitlist import WaitlistEntry
-from app.models.review import Review
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.user import User
+    from app.models.booking import Booking
+    from app.models.waitlist import WaitlistEntry
+    from app.models.review import Review
 
 class ResourceType(str, enum.Enum):
     STAFF = 'staff'
@@ -57,7 +61,7 @@ class Venue(BaseModel):
     phone: Mapped[str | None] = mapped_column(String(32))
     email: Mapped[str | None] = mapped_column(String(255))
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    rating: Mapped[float | None] = mapped_column(Numeric(3, 2))
+    rating: Mapped[Decimal | None] = mapped_column(Numeric(3, 2))
     review_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     owner: Mapped['User'] = relationship(back_populates='venues', lazy='noload')
@@ -88,12 +92,12 @@ class Service(BaseModel):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
     duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
-    price: Mapped[float | None] = mapped_column(Numeric(10, 2))
+    price: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default='EUR')
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     venue: Mapped['Venue'] = relationship(back_populates='services', lazy='noload')
     service_resources: Mapped[list['ServiceResource']] = relationship(back_populates='service', cascade='all, delete-orphan', lazy='noload')
-    bookings: Mapped[list[Booking]] = relationship(back_populates='service', lazy='noload')
+    bookings: Mapped[list['Booking']] = relationship(back_populates='service', lazy='noload')
 
     __table_args__ = (
         CheckConstraint('duration_minutes > 0', name='ck_service_duration_positive'),
@@ -109,10 +113,12 @@ class Resource(BaseModel):
     type: Mapped[ResourceType] = mapped_column(Enum(ResourceType, name='resource_type'), nullable=False, default=ResourceType.OTHER)
     capacity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
     venue: Mapped['Venue'] = relationship(back_populates='resources', lazy='noload')
     service_resources: Mapped[list['ServiceResource']] = relationship(back_populates='resource', cascade='all, delete-orphan', lazy='noload')
     working_hours: Mapped[list['ResourceWorkingHours']] = relationship(back_populates='resource', cascade='all, delete-orphan', lazy='noload')
     bookings: Mapped[list['Booking']] = relationship(back_populates='resource', lazy='noload')
+    schedule_exceptions: Mapped[list['ScheduleException']] = relationship(back_populates='resource', cascade='all, delete-orphan', lazy='noload')
 
     __table_args__ = (
         CheckConstraint('capacity > 0', name='ck_resources_capacity_positive'),
@@ -122,13 +128,13 @@ class Resource(BaseModel):
 class ServiceResource(BaseModel):
     __tablename__ = 'service_resources'
 
-    service_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('service.id', ondelete='CASCADE'), nullable=False)
+    service_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('services.id', ondelete='CASCADE'), nullable=False)
     resource_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('resources.id', ondelete='CASCADE'), nullable=False)
     service: Mapped['Service'] = relationship(back_populates='service_resources', lazy='noload')
     resource: Mapped['Resource'] = relationship(back_populates='service_resources', lazy='noload')
 
     __table_args__ = (
-        UniqueConstraint('service_id', 'resource_id', name='uq_service_resource')
+        UniqueConstraint('service_id', 'resource_id', name='uq_service_resource'),
     )
 
 class VenueWorkingHours(BaseModel):
@@ -150,7 +156,7 @@ class VenueWorkingHours(BaseModel):
 class ResourceWorkingHours(BaseModel):
     __tablename__ = 'resource_working_hours'
 
-    resource_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('resource.id', ondelete='CASCADE'), nullable=False)
+    resource_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('resources.id', ondelete='CASCADE'), nullable=False)
     weekday: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     opens_at: Mapped[time | None] = mapped_column(Time)
     closes_at: Mapped[time | None] = mapped_column(Time)
@@ -167,7 +173,7 @@ class ScheduleException(BaseModel):
     __tablename__ = 'schedule_exceptions'
 
     venue_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('venues.id', ondelete='CASCADE'), nullable=False)
-    resource_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('resources.id', ondelete='CASCADE'))
+    resource_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('resources.id', ondelete='CASCADE'))
     date: Mapped[str] = mapped_column(String(10), nullable=False) # YYYY-MM-DD
     starts_at: Mapped[time | None] = mapped_column(Time)
     ends_at: Mapped[time | None] = mapped_column(Time)
@@ -175,6 +181,7 @@ class ScheduleException(BaseModel):
     reason: Mapped[str | None] = mapped_column(Text)
 
     venue: Mapped['Venue'] = relationship(back_populates='schedule_exceptions', lazy='noload')
+    resource: Mapped['Resource | None'] = relationship(back_populates='schedule_exceptions', lazy='noload')
 
     __table_args__ = (
         Index('idx_schedule_exceptions_venue_date', 'venue_id', 'date'),
